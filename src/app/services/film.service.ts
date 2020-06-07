@@ -1,6 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Film } from '../models/film';
 import { Observable, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
+import { HttpHeaders, HttpClient } from '@angular/common/http';
+import { CONFIG } from '../config';
+import { UserService } from './user.service';
 
 const FILMS: Film[] = [
   {
@@ -32,32 +36,140 @@ const FILMS: Film[] = [
   providedIn: 'root'
 })
 export class FilmService {
-
-  selectedFilm: Film;
-  newFilm: Film;
-  film: Film[];
-  localStorage: any;
+  films: Film[];
   
-  constructor(private localStorageService) {
+  constructor(
+    private http: HttpClient,
+    private userService: UserService
+  ) { }
   
+  getFilms(): Observable<Film[]> {
+    // Se this.films c'è già, lo ritorno subito (come Observable) altrimenti chiamo il server
+    if (this.films) {
+      return of(this.films);
+    } else {
+      return this.http.get<Film[]>(CONFIG.hostApi + '/film/read.php').pipe(
+        tap(response => {
+          console.log('Film scaricati dal server:', response);
+          this.films = response; 
+        }),
+        catchError(error => {
+          alert(error.status + ': ' + error.error);
+          return [];
+        })
+      );
+    }
+  }
+  
+  addFilm(film: Film): Observable<any> {
+    let loggedUser = this.userService.getLoggedUser();
+
+    if (!loggedUser) {
+      alert('please login');
+      return;
+    }
+
+    let httpOptions = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': loggedUser.token
+      })
+    };
+    
+    console.log('Provo ad aggiungere il film:', film);    
+    return this.http.post<any>(CONFIG.hostApi + '/film/create.php', film, httpOptions).pipe(
+      tap(response => {
+        if (response.success) {
+          if (this.films) {
+            film.id = response.id;
+            this.films.push(film);
+          } else {
+            this.getFilms().subscribe();
+          }
+        }
+      }),
+      catchError(error => {
+        alert(error.status + ': ' + error.error);
+        return of(false);
+      })
+    );
+  }
+  
+  editFilm(film: Film): Observable<any> {
+    let loggedUser = this.userService.getLoggedUser();
+
+    if (!loggedUser) {
+      alert('please login');
+      return;
+    }
+
+    let httpOptions = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': loggedUser.token
+      })
+    };
+
+    console.log('Provo ad editare il film:', film);
+    return this.http.post<any>(CONFIG.hostApi + '/film/update.php', film, httpOptions).pipe(
+      tap(response => {
+        console.log(response);
+        if (response.success) {
+          if (this.films) {
+            let filmToEdit = this.films.find(x => x.id == film.id);
+            filmToEdit = film;
+          } else {
+            this.getFilms().subscribe();
+          }
+        }
+      }),
+      catchError(error => {
+        alert(error.status + ': ' + error.error);
+        return of(false);
+      })
+    );
   }
 
-  saveInLocalStorage() {
-    this.localStorage.store("film", this.film)
-  }
+  removeFilm(film: Film): Observable<any> {
+    let loggedUser = this.userService.getLoggedUser();
+    
+    if (!loggedUser) {
+      alert('please login');
+      return;
+    }
 
-  getFilm(): Observable<Film[]> {
+    let httpOptions = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': loggedUser.token
+      })
+    };
 
-    this.film = this.localStorage.retrieve("films") || FILMS;
-    return of(this.film);
+    console.log('Provo a cancellare il film:', film);
+    return this.http.post<any>(CONFIG.hostApi + '/film/delete.php', { id: film.id }, httpOptions).pipe(
+      tap(response => {
+        if (response.success) {
+          if (this.films) {
+            this.films = this.films.filter(x => x.id != film.id);
+          } else {
+            this.getFilms().subscribe();
+          }
+        }
+      }),
+      catchError(error => {
+        alert(error.status + ': ' + error.error);
+        return of(false);
+      })
+    );
   }
-
-  addFilm(film: Film) {
-    this.film.push(film);
-    this.saveInLocalStorage();
+  
+  getLastFilms(films: Film[]): Film[] {
+    return films.slice(-4);
   }
-  editfilm() {
-    this.selectedFilm = null;
-    this.saveInLocalStorage();
+  
+  getTopFilms(films: Film[]): Film[] {
+    return films.sort((film1,film2) => {
+      return film2.stars - film1.stars;
+    }).slice(0, 3);
   }
 }

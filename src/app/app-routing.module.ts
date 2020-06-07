@@ -11,23 +11,18 @@ import { GenresComponent } from './genres/genres.component';
 import { AddGenreComponent } from './add-genre/add-genre.component';
 import { EditGenreComponent } from './edit-genre/edit-genre.component';
 
-
 const routes: Routes = [
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '/dashboard', component: DashboardComponent },
-  { path: '/films', component: FilmsComponent },
-  { path: '/films/add', component: AddFilmComponent },
-  { path: '/films/edit', component: EditFilmComponent },
+  { path: '', redirectTo: '/films', pathMatch: 'full' },
+  { path: 'dashboard', component: DashboardComponent },
+  { path: 'films', component: FilmsComponent },
+  { path: 'films/add', component: AddFilmComponent },
+  { path: 'films/edit/:id', component: EditFilmComponent },
   { path: 'actors', component: ActorsComponent },
   { path: 'actors/add', component: AddActorComponent },
-  { path: 'actors/edit', component: EditActorComponent },
-  { path: 'genre', component: GenresComponent },
-  { path: 'genre/add', component: AddGenreComponent },
-  { path: 'genre/edit', component: EditGenreComponent },
-  
-  
-  
-
+  { path: 'actors/edit/:id', component: EditActorComponent },
+  { path: 'genres', component: GenresComponent },
+  { path: 'genres/add', component: AddGenreComponent },
+  { path: 'genres/edit/:id', component: EditGenreComponent },
 ];
 
 @NgModule({
